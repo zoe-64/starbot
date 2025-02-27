@@ -1,0 +1,19 @@
+{
+  "name": "starbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/main.ts",
+  "scripts": {
+    "run": "esbuild ./src/main.ts --bundle --outfile=dist/main.js --platform=node && node dist/main.js",
+    "install": "npm install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.3"
+  }
+}
