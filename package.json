@@ -4,8 +4,7 @@
   "description": "",
   "main": "./src/main.ts",
   "scripts": {
-    "run": "esbuild ./src/main.ts --bundle --outfile=dist/main.js --platform=node && node dist/main.js",
-    "install": "npm install"
+    "start": "esbuild ./src/main.ts --bundle --outfile=dist/main.js --platform=node && node dist/main.js"
   },
   "keywords": [],
   "author": "",

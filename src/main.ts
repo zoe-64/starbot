@@ -223,7 +223,7 @@ client.on("messageCreate", async (message: Message) => {
   if (incorrectWords.length > 0) {
     const word =
       incorrectWords[Math.floor(Math.random() * incorrectWords.length)];
-    const babyMessage = await (message.channel as TextChannel).send(
+    await (message.channel as TextChannel).send(
       `${
         message.author
       }, your message was not very baby-like because you said '${word}', try again and say "${transformWords(
@@ -231,10 +231,6 @@ client.on("messageCreate", async (message: Message) => {
         filters
       )}".`
     );
-    setTimeout(async () => {
-      await message.delete();
-      await babyMessage.delete();
-    }, 5000);
     goldenStars[message.author.id] = Math.max(
       (goldenStars[message.author.id] || 0) - 1,
       0
