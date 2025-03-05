@@ -4,103 +4,16 @@ import {
   GatewayIntentBits,
   Interaction,
   Message,
+  REST,
+  Routes,
   SlashCommandBuilder,
   TextChannel,
 } from "discord.js";
 import * as dotenv from "dotenv";
-import { TransformFilter, transformWords } from "./transform";
+import { filters, transformWords } from "./transform";
+import { loadGifCommands, saveGifCommands } from "./gifCommands";
 
 dotenv.config();
-
-const rewards: {
-  [key: string]: { reward: (message: Message) => void; chance: number };
-} = {
-  "Extra Star": {
-    reward: (message: Message) => {
-      goldenStars[message.author.id] =
-        (goldenStars[message.author.id] || 0) + 1;
-      message.reply(
-        `One extra star for you, ${message.author.displayName}! You now have ${
-          goldenStars[message.author.id]
-        }.`
-      );
-    },
-    chance: 0.5,
-  },
-  "Diaper Rub": {
-    reward: (message: Message) => {
-      const rubs = [
-        "https://cdn.discordapp.com/attachments/1246127470378356840/1344763516552478784/w.gif",
-        "https://cdn.discordapp.com/attachments/1344399134714626179/1344763168592887808/01448a1480c01c045012c4d9b713fea31.gif?",
-      ];
-      const randomRub = rubs[Math.floor(Math.random() * rubs.length)];
-      message.reply(
-        `${randomRub}\n Feel good ${message.author.displayName}? Bet it does. `
-      );
-    },
-    chance: 0.5,
-  },
-  "Head Pat": {
-    reward: (message: Message) => {
-      const pats = [
-        "https://tenor.com/view/anime-girl-gif-19660588",
-        "https://tenor.com/view/fallenshadow-baby-pacifier-vtuber-shondo-gif-27171057",
-      ];
-      const randomPat = pats[Math.floor(Math.random() * pats.length)];
-      message.reply(
-        `${randomPat}\n ${message.author.displayName}, who's a good baby? You are. `
-      );
-    },
-    chance: 0.5,
-  },
-};
-const punishments: {
-  [key: string]: { punishment: (message: Message) => void; weight: number };
-} = {
-  "Light Spank": {
-    punishment: (message: Message) => {
-      const spanks = [
-        "https://cdn.discordapp.com/attachments/1339878614249898035/1341477324578623569/tumblr_65a47b1a3abcd1451b98b73ea3eb1076_5933c63c_250.webp",
-        "https://31.media.tumblr.com/f58268f3f35242718bd45c3e4b2f590e/tumblr_ovfntllnbK1w5nrb0o1_250.gif",
-      ];
-      const randomSpank = spanks[Math.floor(Math.random() * spanks.length)];
-      message.reply(
-        `${randomSpank} \nIf you continue like this ${message.author.displayName}, you'll feel more than this...`
-      );
-    },
-    weight: 2,
-  },
-  Spank: {
-    punishment: (message: Message) => {
-      const spanks = [
-        "https://wimg.rule34.xxx//images/1/c78103b923c8c056b997233ab9234787.gif?9358229",
-        "https://img3.gelbooru.com/images/54/e5/54e5800b0c8b3ce5bb6151ab2aed4ca8.gif",
-        "https://cumception.com/wp-content/upload/2022/12/diaper_position_span-980.gif",
-        "https://xxgasm.com/wp-content/upload/2018/08/spanking_ma-4206.gif",
-      ];
-      const randomSpank = spanks[Math.floor(Math.random() * spanks.length)];
-      message.reply(
-        `${randomSpank} \n${message.author.displayName}, does it hurt yet?`
-      );
-    },
-    weight: 1,
-  },
-  Bondage: {
-    punishment: (message: Message) => {
-      const bondages = [
-        "https://wimg.rule34.xxx//images/6228/5d544b1341743126d506c490f69a1bd0.jpeg?7087761",
-        "https://wimg.rule34.xxx//samples/6222/sample_398474c543e645b4ae0dfa6a60d8f3d8.jpg?7081992",
-        "https://wimg.rule34.xxx//images/5673/ff1a046b4661c2c0c05c87eed7a8b31e.jpeg?6452418",
-      ];
-      const randomBondage =
-        bondages[Math.floor(Math.random() * bondages.length)];
-      message.reply(
-        `${randomBondage} \nBe a good baby ${message.author.displayName}, otherwise you'll be sorry... `
-      );
-    },
-    weight: 1,
-  },
-};
 
 const client = new Client({
   intents: [
@@ -111,11 +24,10 @@ const client = new Client({
 });
 
 const token = process.env.BOT_TOKEN;
-const channelId = process.env.CHANNEL_ID;
+const clientId = process.env.CLIENT_ID;
 
-if (!token || !channelId) {
-  console.error("Missing BOT_TOKEN or CHANNEL_ID in .env file.");
-  process.exit(1);
+if (!token || !clientId) {
+  throw new Error("No token or client ID found in environment variables.");
 }
 
 const goldenStars: { [userId: string]: number } = {};
@@ -124,9 +36,9 @@ const starsCommand = new SlashCommandBuilder()
   .setName("stars")
   .setDescription("Check how many golden stars you have!");
 
-const testTranslateCommand = new SlashCommandBuilder()
-  .setName("translate")
-  .setDescription("Translate a message")
+const testSpeakCommand = new SlashCommandBuilder()
+  .setName("speak")
+  .setDescription("Make a message sound like a baby is speaking")
   .addStringOption((option) =>
     option
       .setName("message")
@@ -134,55 +46,132 @@ const testTranslateCommand = new SlashCommandBuilder()
       .setRequired(true)
   );
 
-client.once("ready", () => {
+const addGifCommand = new SlashCommandBuilder()
+  .setName("addgifcommand")
+  .setDescription("Create a new GIF command.")
+  .addStringOption((option) =>
+    option
+      .setName("name")
+      .setDescription("The name of the command.")
+      .setRequired(true)
+  );
+
+const addGif = new SlashCommandBuilder()
+  .setName("addgif")
+  .setDescription("Add a gif to a command")
+  .addStringOption((option) =>
+    option
+      .setName("commandname")
+      .setDescription("The command to add a gif to.")
+      .setRequired(true)
+  )
+  .addStringOption((option) =>
+    option
+      .setName("gifurl")
+      .setDescription("The gif url to add.")
+      .setRequired(true)
+  );
+
+const rest = new REST({ version: "10" }).setToken(token);
+
+const registerCommands = async (commands: SlashCommandBuilder[]) => {
+  try {
+    await rest.put(Routes.applicationCommands(clientId), { body: commands });
+    console.log("Successfully registered application commands.");
+  } catch (error) {
+    console.error("Error registering commands:", error);
+  }
+};
+
+client.once("ready", async () => {
   console.log("Bot is ready!");
-
-  client.application?.commands.create(starsCommand);
-  client.application?.commands.create(testTranslateCommand);
+  await registerCommands([
+    addGifCommand,
+    addGif,
+    starsCommand,
+    testSpeakCommand,
+  ] as SlashCommandBuilder[]); // Register the base commands
+  loadDynamicCommands();
 });
-const filters: TransformFilter[] = [
-  [{ regex: /sl|\'/g, replace: "" }],
-  // replacement
-  [
-    { regex: /girl/g, replace: "gawi" },
-    { regex: /water/g, replace: "wawa" },
-    { regex: /the/g, replace: "da" },
-  ],
-
-  // letter drops
-  [
-    { regex: /(nt)$/g, replace: "n" },
-    { regex: /(ter)$/g, replace: "te" },
-    { regex: /(ing)$/g, replace: "in" },
-    { regex: /(ve)$/g, replace: "v" },
-  ],
-
-  { regex: /(er)$|(et)$/g, replace: "ie" },
-  [
-    { regex: /th(?=[ri])/g, replace: "f" },
-    { regex: /th/g, replace: "d" },
-  ],
-  [
-    { regex: /^l/g, replace: "w" },
-    { regex: /llo/g, replace: "wo" },
-    { regex: /ll/g, replace: "wl" },
-    { regex: /ri|l|r/g, replace: "w" },
-  ],
-  { regex: /time|tim/g, replace: "im" },
-  { regex: /sh/g, replace: "ss" },
-  { regex: /s(?!\b)/g, replace: "sh" },
-  { regex: /good/g, replace: "gud" },
-];
-
+async function loadDynamicCommands() {
+  const gifCommands = loadGifCommands();
+  const dynamicCommands = Object.keys(gifCommands.commands).map((commandName) =>
+    new SlashCommandBuilder()
+      .setName(commandName)
+      .setDescription(`Sends a GIF from ${commandName}.`)
+  );
+  await registerCommands([
+    ...dynamicCommands,
+    addGifCommand,
+    addGif,
+    starsCommand,
+    testSpeakCommand,
+  ] as SlashCommandBuilder[]);
+}
 client.on("interactionCreate", async (interaction: Interaction) => {
   if (!interaction.isCommand()) return;
 
-  if (interaction.commandName === testTranslateCommand.name) {
+  // admin commands
+
+  if (interaction.user.username === "cute.zoey") {
+    if (interaction.commandName === "addgifcommand") {
+      const name = (interaction as CommandInteraction).options.get("name", true)
+        .value as string;
+      const gifCommands = loadGifCommands();
+      if (gifCommands.commands[name]) {
+        await interaction.reply({
+          content: "Command name already exists.",
+          ephemeral: true,
+        });
+        return;
+      }
+      gifCommands.commands[name] = [];
+      saveGifCommands(gifCommands);
+      await loadDynamicCommands();
+      await interaction.reply({
+        content: `Command ${name} created!`,
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (interaction.commandName === "addgif") {
+      const commandName = (interaction as CommandInteraction).options.get(
+        "commandname",
+        true
+      ).value as string;
+      const gifUrl = (interaction as CommandInteraction).options.get(
+        "gifurl",
+        true
+      ).value as string;
+      const gifCommands = loadGifCommands();
+      if (!gifCommands.commands[commandName]) {
+        await interaction.reply({
+          content: `Command ${commandName} does not exist.`,
+          ephemeral: true,
+        });
+        return;
+      }
+      gifCommands.commands[commandName].push(gifUrl);
+      saveGifCommands(gifCommands);
+      await interaction.reply({
+        content: `Gif added to ${commandName}!`,
+        ephemeral: true,
+      });
+      return;
+    }
+  }
+
+  if (interaction.commandName === testSpeakCommand.name) {
     const message = (interaction as CommandInteraction).options.get(
       "message",
       true
     ).value as string;
-    await interaction.reply(transformWords(message, filters));
+    const user = interaction.user;
+    const nickname = user.displayName || user.username;
+    await interaction.reply(
+      `${nickname} babbled: ${transformWords(message, filters)}`
+    );
     return;
   }
 
@@ -191,82 +180,18 @@ client.on("interactionCreate", async (interaction: Interaction) => {
     await interaction.reply(`You have ${stars} golden stars.`);
     return;
   }
+
+  const gifCommands = loadGifCommands();
+  if (gifCommands.commands[interaction.commandName]) {
+    const gifUrls = gifCommands.commands[interaction.commandName];
+    const randomGif = gifUrls[Math.floor(Math.random() * gifUrls.length)];
+    await interaction.reply(randomGif);
+    return;
+  }
 });
 
 client.on("messageCreate", async (message: Message) => {
   if (message.author.bot) return; // Ignore messages from bots
-  if (message.channel.id !== channelId) return; // Only listen in the specified channel
-  const isNotText = (word: string) => {
-    return /(:.+:)|\[|{\(|(http)/gm.test(word);
-  };
-
-  const inputWords = message.content
-    .toLowerCase()
-    .split(" ")
-    .filter((word) => !isNotText(word));
-  const transformedContent = transformWords(
-    message.content.toLowerCase(),
-    filters
-  );
-  const correctWords = transformedContent.split(" ");
-
-  const isName = (word: string) => {
-    return message.guild?.members.cache.some(
-      (member) => member.displayName.toLowerCase() === word
-    );
-  };
-
-  const incorrectWords = inputWords.filter((word, index) => {
-    return !isName(word) && word !== correctWords[index];
-  });
-
-  if (incorrectWords.length > 0) {
-    const word =
-      incorrectWords[Math.floor(Math.random() * incorrectWords.length)];
-    await (message.channel as TextChannel).send(
-      `${
-        message.author
-      }, your message was not very baby-like because you said '${word}', try again and say "${transformWords(
-        word,
-        filters
-      )}".`
-    );
-    goldenStars[message.author.id] = Math.max(
-      (goldenStars[message.author.id] || 0) - 1,
-      0
-    ); // Ensure stars don't go negative
-    const chance = Math.random();
-    const weightSum = Object.values(punishments).reduce(
-      (acc, cur) => acc + cur.weight,
-      0
-    );
-    const randomWeight = Math.random() * weightSum;
-    let cumulativeWeight = 0;
-    let randomPunishment: string = punishments["Light Spank"].punishment.name;
-    Object.entries(punishments).some(([key, { weight }]) => {
-      cumulativeWeight += weight;
-      if (cumulativeWeight >= randomWeight) {
-        randomPunishment = key;
-        return true;
-      }
-      return false;
-    });
-
-    if (chance < 0.33 && randomPunishment) {
-      punishments[randomPunishment].punishment(message);
-    }
-  } else if (inputWords.length > 2) {
-    goldenStars[message.author.id] = (goldenStars[message.author.id] || 0) + 1;
-    message.react("⭐");
-    const randomReward =
-      Object.keys(rewards)[
-        Math.floor(Math.random() * Object.keys(rewards).length)
-      ];
-    const chance = rewards[randomReward].chance;
-    if (Math.random() < chance) {
-      rewards[randomReward].reward(message);
-    }
-  }
 });
 
 client.login(token);
