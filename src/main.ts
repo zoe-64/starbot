@@ -113,7 +113,10 @@ client.on("interactionCreate", async (interaction: Interaction) => {
 
   // admin commands
 
-  if (interaction.user.username === "cute.zoey") {
+  if (
+    interaction.user.username === "cute.zoey" ||
+    interaction.user.username === "thevoid_fox"
+  ) {
     if (interaction.commandName === "addgifcommand") {
       const name = (interaction as CommandInteraction).options.get("name", true)
         .value as string;
