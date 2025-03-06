@@ -33,19 +33,15 @@ export function checkAndExecuteGifCommand(interaction: CommandInteraction) {
 
   if (!gifUrls) return;
 
+  // Retrieve the index option and ensure it's a number
   const option = interaction.options.get("index", false);
-  let index = null;
+  let index = option ? option.value : null;
 
   if (gifUrls && gifUrls.length > 0) {
     let selectedGif;
     let selectedIndex;
 
-    if (
-      index !== undefined &&
-      index !== null &&
-      index >= 0 &&
-      index < gifUrls.length
-    ) {
+    if (typeof index === "number" && index >= 0 && index < gifUrls.length) {
       selectedGif = gifUrls[index];
       selectedIndex = index;
     } else {
