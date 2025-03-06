@@ -36512,7 +36512,7 @@ var require_dist8 = __commonJS({
       SlashCommandAssertions: () => Assertions_exports5,
       SlashCommandAttachmentOption: () => SlashCommandAttachmentOption,
       SlashCommandBooleanOption: () => SlashCommandBooleanOption,
-      SlashCommandBuilder: () => SlashCommandBuilder2,
+      SlashCommandBuilder: () => SlashCommandBuilder8,
       SlashCommandChannelOption: () => SlashCommandChannelOption,
       SlashCommandIntegerOption: () => SlashCommandIntegerOption,
       SlashCommandMentionableOption: () => SlashCommandMentionableOption,
@@ -38907,7 +38907,7 @@ var require_dist8 = __commonJS({
         return this;
       }
     };
-    var SlashCommandBuilder2 = class {
+    var SlashCommandBuilder8 = class {
       /**
        * The name of this command.
        */
@@ -38960,10 +38960,10 @@ var require_dist8 = __commonJS({
        */
       nsfw = void 0;
     };
-    __name(SlashCommandBuilder2, "SlashCommandBuilder");
-    SlashCommandBuilder2 = __decorateClass([
+    __name(SlashCommandBuilder8, "SlashCommandBuilder");
+    SlashCommandBuilder8 = __decorateClass([
       (0, import_ts_mixer6.mix)(SharedSlashCommandOptions, SharedNameAndDescription, SharedSlashCommandSubcommands, SharedSlashCommand)
-    ], SlashCommandBuilder2);
+    ], SlashCommandBuilder8);
     var Assertions_exports6 = {};
     __export2(Assertions_exports6, {
       contextsPredicate: () => contextsPredicate2,
@@ -42477,9 +42477,9 @@ var require_ApplicationCommandManager = __commonJS({
        *   .then(console.log)
        *   .catch(console.error);
        */
-      async set(commands, guildId) {
+      async set(commands2, guildId) {
         const data = await this.client.rest.put(this.commandPath({ guildId }), {
-          body: commands.map((command) => this.constructor.transformCommand(command))
+          body: commands2.map((command) => this.constructor.transformCommand(command))
         });
         return data.reduce(
           (collection, command) => collection.set(command.id, this._add(command, true, guildId)),
@@ -49919,7 +49919,7 @@ var require_TextChannel = __commonJS({
   "node_modules/discord.js/src/structures/TextChannel.js"(exports2, module2) {
     "use strict";
     var BaseGuildTextChannel = require_BaseGuildTextChannel();
-    var TextChannel2 = class extends BaseGuildTextChannel {
+    var TextChannel5 = class extends BaseGuildTextChannel {
       _patch(data) {
         super._patch(data);
         if ("rate_limit_per_user" in data) {
@@ -49936,7 +49936,7 @@ var require_TextChannel = __commonJS({
         return this.edit({ rateLimitPerUser, reason });
       }
     };
-    module2.exports = TextChannel2;
+    module2.exports = TextChannel5;
   }
 });
 
@@ -52807,7 +52807,7 @@ var require_CommandInteraction = __commonJS({
     var BaseInteraction = require_BaseInteraction();
     var InteractionWebhook = require_InteractionWebhook();
     var InteractionResponses = require_InteractionResponses();
-    var CommandInteraction2 = class extends BaseInteraction {
+    var CommandInteraction8 = class extends BaseInteraction {
       constructor(client2, data) {
         super(client2, data);
         this.commandId = data.data.id;
@@ -52903,8 +52903,8 @@ var require_CommandInteraction = __commonJS({
       awaitModalSubmit() {
       }
     };
-    InteractionResponses.applyToClass(CommandInteraction2, ["deferUpdate", "update"]);
-    module2.exports = CommandInteraction2;
+    InteractionResponses.applyToClass(CommandInteraction8, ["deferUpdate", "update"]);
+    module2.exports = CommandInteraction8;
   }
 });
 
@@ -52912,10 +52912,10 @@ var require_CommandInteraction = __commonJS({
 var require_ChatInputCommandInteraction = __commonJS({
   "node_modules/discord.js/src/structures/ChatInputCommandInteraction.js"(exports2, module2) {
     "use strict";
-    var CommandInteraction2 = require_CommandInteraction();
+    var CommandInteraction8 = require_CommandInteraction();
     var CommandInteractionOptionResolver = require_CommandInteractionOptionResolver();
     var { transformResolved } = require_Util();
-    var ChatInputCommandInteraction = class extends CommandInteraction2 {
+    var ChatInputCommandInteraction = class extends CommandInteraction8 {
       constructor(client2, data) {
         super(client2, data);
         this.options = new CommandInteractionOptionResolver(
@@ -52994,11 +52994,11 @@ var require_ContextMenuCommandInteraction = __commonJS({
     "use strict";
     var { lazy } = require_dist();
     var { ApplicationCommandOptionType } = require_v106();
-    var CommandInteraction2 = require_CommandInteraction();
+    var CommandInteraction8 = require_CommandInteraction();
     var CommandInteractionOptionResolver = require_CommandInteractionOptionResolver();
     var { transformResolved } = require_Util();
     var getMessage = lazy(() => require_Message().Message);
-    var ContextMenuCommandInteraction = class extends CommandInteraction2 {
+    var ContextMenuCommandInteraction = class extends CommandInteraction8 {
       constructor(client2, data) {
         super(client2, data);
         this.options = new CommandInteractionOptionResolver(
@@ -69444,8 +69444,115 @@ var require_main = __commonJS({
 });
 
 // src/main.ts
-var import_discord = __toESM(require_src());
+var import_discord7 = __toESM(require_src());
 var dotenv = __toESM(require_main());
+
+// src/gifCommands.ts
+var fs = __toESM(require("fs"));
+var path = __toESM(require("path"));
+var gifCommandsFilePath = path.join(__dirname, "gifCommands.json");
+function loadGifCommands() {
+  try {
+    const data = fs.readFileSync(gifCommandsFilePath, "utf8");
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("Error loading gif commands:", error);
+    return { commands: {} };
+  }
+}
+function saveGifCommands(data) {
+  try {
+    fs.writeFileSync(gifCommandsFilePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error("Error saving gif commands:", error);
+  }
+}
+function checkAndExecuteGifCommand(interaction) {
+  const gifCommands = loadGifCommands();
+  const gifUrls = gifCommands.commands[interaction.commandName];
+  if (!gifUrls) return;
+  const option = interaction.options.get("index", false);
+  let index = null;
+  if (gifUrls && gifUrls.length > 0) {
+    let selectedGif;
+    let selectedIndex;
+    if (index !== void 0 && index !== null && index >= 0 && index < gifUrls.length) {
+      selectedGif = gifUrls[index];
+      selectedIndex = index;
+    } else {
+      selectedIndex = Math.floor(Math.random() * gifUrls.length);
+      selectedGif = gifUrls[selectedIndex];
+    }
+    interaction.reply(`GIF Index: ${selectedIndex}`).then(() => {
+      interaction.followUp(selectedGif);
+    });
+    return;
+  }
+  interaction.reply("There are no GIFs available for this command.");
+}
+
+// src/commands/addGifCommand.ts
+var import_discord = __toESM(require_src());
+var addGifCommand = {
+  command: new import_discord.SlashCommandBuilder().setName("addgifcommand").setDescription("Create a new GIF command.").addStringOption(
+    (option) => option.setName("name").setDescription("The name of the command.").setRequired(true)
+  ),
+  async execute(interaction) {
+    const commandName = interaction.options.get(
+      "name",
+      true
+    ).value;
+    const gifCommands = loadGifCommands();
+    if (gifCommands.commands[commandName]) {
+      interaction.reply({
+        content: "Command name already exists.",
+        ephemeral: true
+      });
+      return;
+    }
+    gifCommands.commands[commandName] = [];
+    saveGifCommands(gifCommands);
+    interaction.reply({
+      content: `Command ${commandName} created!`,
+      ephemeral: true
+    });
+  }
+};
+
+// src/commands/addGif.ts
+var import_discord2 = __toESM(require_src());
+var addGif = {
+  command: new import_discord2.SlashCommandBuilder().setName("addgif").setDescription("Add a gif to a command").addStringOption(
+    (option) => option.setName("commandname").setDescription("The command to add a gif to.").setRequired(true)
+  ).addStringOption(
+    (option) => option.setName("gifurl").setDescription("The gif url to add.").setRequired(true)
+  ),
+  async execute(interaction) {
+    const commandName = interaction.options.get("commandname", true).value;
+    const gifUrl = interaction.options.get("gifurl", true).value;
+    const gifCommands = loadGifCommands();
+    if (!gifCommands.commands[commandName]) {
+      interaction.reply({
+        content: `Command ${commandName} does not exist.`,
+        ephemeral: true
+      });
+      return;
+    }
+    const index = gifCommands.commands[commandName].push(gifUrl) - 1;
+    saveGifCommands(gifCommands);
+    const channel = interaction.client.channels.cache.get(
+      "1347097892996907078"
+    );
+    channel.send(`Gif added to ${commandName} at index ${index}: ${gifUrl}`);
+    interaction.reply({
+      content: `Gif added to ${commandName} at index ${index}!`,
+      ephemeral: true
+    });
+  }
+};
+
+// src/commands/speak.ts
+var import_discord3 = __toESM(require_src());
 
 // src/transform.ts
 var filters = [
@@ -69492,139 +69599,13 @@ function transformWords(input, filters2) {
   }, input);
 }
 
-// src/gifCommands.ts
-var fs = __toESM(require("fs"));
-var path = __toESM(require("path"));
-var gifCommandsFilePath = path.join(__dirname, "gifCommands.json");
-function loadGifCommands() {
-  try {
-    const data = fs.readFileSync(gifCommandsFilePath, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error loading gif commands:", error);
-    return { commands: {} };
-  }
-}
-function saveGifCommands(data) {
-  try {
-    fs.writeFileSync(gifCommandsFilePath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error("Error saving gif commands:", error);
-  }
-}
-
-// src/main.ts
-dotenv.config();
-var client = new import_discord.Client({
-  intents: [
-    import_discord.GatewayIntentBits.Guilds,
-    import_discord.GatewayIntentBits.GuildMessages,
-    import_discord.GatewayIntentBits.MessageContent
-  ]
-});
-var token = process.env.BOT_TOKEN;
-var clientId = process.env.CLIENT_ID;
-if (!token || !clientId) {
-  throw new Error("No token or client ID found in environment variables.");
-}
-var goldenStars = {};
-var starsCommand = new import_discord.SlashCommandBuilder().setName("stars").setDescription("Check how many golden stars you have!");
-var testSpeakCommand = new import_discord.SlashCommandBuilder().setName("speak").setDescription("Make a message sound like a baby is speaking").addStringOption(
-  (option) => option.setName("message").setDescription("The message to translate").setRequired(true)
-);
-var addGifCommand = new import_discord.SlashCommandBuilder().setName("addgifcommand").setDescription("Create a new GIF command.").addStringOption(
-  (option) => option.setName("name").setDescription("The name of the command.").setRequired(true)
-);
-var addGif = new import_discord.SlashCommandBuilder().setName("addgif").setDescription("Add a gif to a command").addStringOption(
-  (option) => option.setName("commandname").setDescription("The command to add a gif to.").setRequired(true)
-).addStringOption(
-  (option) => option.setName("gifurl").setDescription("The gif url to add.").setRequired(true)
-);
-var rest = new import_discord.REST({ version: "10" }).setToken(token);
-var registerCommands = async (commands) => {
-  try {
-    await rest.put(import_discord.Routes.applicationCommands(clientId), { body: commands });
-    console.log("Successfully registered application commands.");
-  } catch (error) {
-    console.error("Error registering commands:", error);
-  }
-};
-client.once("ready", async () => {
-  console.log("Bot is ready!");
-  await registerCommands([
-    addGifCommand,
-    addGif,
-    starsCommand,
-    testSpeakCommand
-  ]);
-  loadDynamicCommands();
-});
-async function loadDynamicCommands() {
-  const gifCommands = loadGifCommands();
-  const dynamicCommands = Object.keys(gifCommands.commands).map(
-    (commandName) => new import_discord.SlashCommandBuilder().setName(commandName).setDescription(`Sends a GIF from ${commandName}.`)
-  );
-  await registerCommands([
-    ...dynamicCommands,
-    addGifCommand,
-    addGif,
-    starsCommand,
-    testSpeakCommand
-  ]);
-}
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return;
-  if (interaction.user.username === "cute.zoey") {
-    if (interaction.commandName === "addgifcommand") {
-      const name = interaction.options.get("name", true).value;
-      const gifCommands2 = loadGifCommands();
-      if (gifCommands2.commands[name]) {
-        await interaction.reply({
-          content: "Command name already exists.",
-          ephemeral: true
-        });
-        return;
-      }
-      gifCommands2.commands[name] = [];
-      saveGifCommands(gifCommands2);
-      await loadDynamicCommands();
-      await interaction.reply({
-        content: `Command ${name} created!`,
-        ephemeral: true
-      });
-      return;
-    }
-    if (interaction.commandName === "addgif") {
-      const commandName = interaction.options.get(
-        "commandname",
-        true
-      ).value;
-      const gifUrl = interaction.options.get(
-        "gifurl",
-        true
-      ).value;
-      const gifCommands2 = loadGifCommands();
-      if (!gifCommands2.commands[commandName]) {
-        await interaction.reply({
-          content: `Command ${commandName} does not exist.`,
-          ephemeral: true
-        });
-        return;
-      }
-      gifCommands2.commands[commandName].push(gifUrl);
-      saveGifCommands(gifCommands2);
-      await interaction.reply({
-        content: `Gif added to ${commandName}!`,
-        ephemeral: true
-      });
-      return;
-    }
-  }
-  if (interaction.commandName === testSpeakCommand.name) {
-    const message = interaction.options.get(
-      "message",
-      true
-    ).value;
+// src/commands/speak.ts
+var speak = {
+  command: new import_discord3.SlashCommandBuilder().setName("speak").setDescription("Make a message sound like a baby is speaking").addStringOption(
+    (option) => option.setName("message").setDescription("The message to translate").setRequired(true)
+  ),
+  async execute(interaction) {
+    const message = interaction.options.get("message", true).value;
     const user = interaction.user;
     const nickname = user.displayName || user.username;
     await interaction.reply(
@@ -69632,18 +69613,184 @@ client.on("interactionCreate", async (interaction) => {
     );
     return;
   }
-  if (interaction.commandName === starsCommand.name) {
-    const stars = goldenStars[interaction.user.id] || 0;
-    await interaction.reply(`You have ${stars} golden stars.`);
-    return;
+};
+
+// src/commands/removeGifCommand.ts
+var import_discord4 = __toESM(require_src());
+var removeGifCommand = {
+  command: new import_discord4.SlashCommandBuilder().setName("removegifcommand").setDescription("Remove a gif command by name.").addStringOption(
+    (option) => option.setName("name").setDescription("The name of the command to remove.").setRequired(true)
+  ),
+  async execute(interaction) {
+    const commandName = interaction.options.get(
+      "name",
+      true
+    ).value;
+    const gifCommands = loadGifCommands();
+    if (!gifCommands.commands[commandName]) {
+      interaction.reply({
+        content: "Command name does not exist."
+      });
+      return;
+    }
+    await interaction.reply({
+      content: `Are you sure you want to remove the gif command "${commandName}"? (y/n)`,
+      ephemeral: true
+    });
+    const messages = await interaction.channel.awaitMessages({
+      filter: (m) => m.author.id === interaction.user.id,
+      max: 1,
+      time: 3e4
+    });
+    if (!messages || messages.first()?.content.toLowerCase() !== "y") {
+      interaction.editReply({
+        content: "Removal of gif command cancelled."
+      });
+      return;
+    }
+    delete gifCommands.commands[commandName];
+    saveGifCommands(gifCommands);
+    interaction.editReply({
+      content: `Removed gif command "${commandName}".`
+    });
   }
+};
+
+// src/commands/removeGif.ts
+var import_discord5 = __toESM(require_src());
+var removeGif = {
+  command: new import_discord5.SlashCommandBuilder().setName("removegif").setDescription("Remove a gif from a gif command by index.").addStringOption(
+    (option) => option.setName("commandname").setDescription("The command to remove a gif from.").setRequired(true)
+  ).addIntegerOption(
+    (option) => option.setName("index").setDescription("The index of the gif to remove.").setRequired(true)
+  ),
+  async execute(interaction) {
+    const commandName = interaction.options.get(
+      "commandname",
+      true
+    ).value;
+    const index = interaction.options.get("index", true).value;
+    const gifCommands = loadGifCommands();
+    if (!gifCommands.commands[commandName]) {
+      interaction.reply({
+        content: "Command name does not exist.",
+        ephemeral: true
+      });
+      return;
+    }
+    const gifUrls = gifCommands.commands[commandName];
+    if (index < 0 || index >= gifUrls.length) {
+      interaction.reply({
+        content: "Index out of bounds.",
+        ephemeral: true
+      });
+      return;
+    }
+    const gifUrl = gifUrls[index];
+    await interaction.reply({
+      content: `Are you sure you want to remove the gif "${gifUrl}" from command "${commandName}"? (y/n)`,
+      ephemeral: true
+    });
+    const messages = await interaction.channel.awaitMessages({
+      filter: (m) => m.author.id === interaction.user.id,
+      max: 1,
+      time: 3e4
+    });
+    if (!messages || messages.first()?.content.toLowerCase() !== "y") {
+      interaction.editReply({
+        content: "Removal of gif from command cancelled."
+      });
+      return;
+    }
+    gifUrls.splice(index, 1);
+    saveGifCommands(gifCommands);
+    interaction.editReply({
+      content: `Removed gif "${gifUrl}" from command "${commandName}".`
+    });
+  }
+};
+
+// src/commands/sendAllGifs.ts
+var import_discord6 = __toESM(require_src());
+var sendAllGifs = {
+  command: new import_discord6.SlashCommandBuilder().setName("sendallgifs").setDescription("Sends all GIFs with their indices").addStringOption(
+    (option) => option.setName("command").setDescription("The command that the gifs come from").setRequired(false)
+  ),
+  async execute(interaction) {
+    const gifCommands = loadGifCommands();
+    const command = interaction.options.get("command", true).value;
+    const gifUrls = gifCommands.commands[command];
+    if (!gifUrls || gifUrls.length === 0) {
+      await interaction.reply("There are no GIFs available for this command.");
+      return;
+    }
+    await interaction.reply(`GIF Index: 0
+${gifUrls[0]}`);
+    for (let i = 1; i < gifUrls.length; i++) {
+      const gifUrl = gifUrls[i];
+      await interaction.followUp(`GIF Index: ${i}
+${gifUrl}`);
+      await new Promise((resolve) => setTimeout(resolve, 1e3));
+    }
+  }
+};
+
+// src/main.ts
+dotenv.config();
+var client = new import_discord7.Client({
+  intents: [
+    import_discord7.GatewayIntentBits.Guilds,
+    import_discord7.GatewayIntentBits.GuildMessages,
+    import_discord7.GatewayIntentBits.MessageContent
+  ]
+});
+var token = process.env.BOT_TOKEN;
+var clientId = process.env.CLIENT_ID;
+if (!token || !clientId) {
+  throw new Error("No token or client ID found in environment variables.");
+}
+var commands = [
+  addGifCommand,
+  addGif,
+  speak,
+  removeGif,
+  removeGifCommand,
+  sendAllGifs
+];
+var rest = new import_discord7.REST({ version: "10" }).setToken(token);
+var registerCommands = async (commands2) => {
+  try {
+    await rest.put(import_discord7.Routes.applicationCommands(clientId), { body: commands2 });
+    console.log("Successfully registered application commands.");
+  } catch (error) {
+    console.error("Error registering commands:", error);
+  }
+};
+client.once("ready", async () => {
+  console.log("Bot is ready!");
+  loadDynamicCommands();
+});
+async function loadDynamicCommands() {
   const gifCommands = loadGifCommands();
-  if (gifCommands.commands[interaction.commandName]) {
-    const gifUrls = gifCommands.commands[interaction.commandName];
-    const randomGif = gifUrls[Math.floor(Math.random() * gifUrls.length)];
-    await interaction.reply(randomGif);
-    return;
+  const dynamicCommands = Object.keys(gifCommands.commands).map(
+    (commandName) => new import_discord7.SlashCommandBuilder().setName(commandName).setDescription(`Sends a GIF from ${commandName}.`).addNumberOption(
+      (option) => option.setName("index").setDescription("The index number (optional).").setRequired(false)
+    )
+  );
+  await registerCommands([
+    ...dynamicCommands,
+    ...commands.map((data) => data.command)
+  ]);
+}
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isCommand()) return;
+  for (const command of commands) {
+    if (command.command.name === interaction.commandName) {
+      command.execute(interaction);
+      return;
+    }
   }
+  checkAndExecuteGifCommand(interaction);
 });
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
