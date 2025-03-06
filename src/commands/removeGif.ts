@@ -9,16 +9,27 @@ export const removeGif = {
   command: new SlashCommandBuilder()
     .setName("removegif")
     .setDescription("Remove a gif from a gif command by index.")
-    .addStringOption((option) =>
-      option
+    .addStringOption((option) => {
+      const gifCommands = loadGifCommands();
+      const commandChoices = Object.keys(gifCommands.commands).map(
+        (commandName) => ({
+          name: commandName,
+          value: commandName,
+        })
+      );
+
+      return option
         .setName("commandname")
         .setDescription("The command to remove a gif from.")
         .setRequired(true)
-    )
-    .addIntegerOption((option) =>
+        .addChoices(...commandChoices);
+    })
+    .addStringOption((option) =>
       option
         .setName("index")
-        .setDescription("The index of the gif to remove.")
+        .setDescription(
+          "The index of the gif to remove. Format: <index>-<target>"
+        )
         .setRequired(true)
     ),
 
@@ -28,7 +39,7 @@ export const removeGif = {
       true
     ).value as string;
     const index = (interaction as CommandInteraction).options.get("index", true)
-      .value as number;
+      .value as string;
     const gifCommands = loadGifCommands();
     if (!gifCommands.commands[commandName]) {
       interaction.reply({
@@ -38,8 +49,17 @@ export const removeGif = {
       return;
     }
 
-    const gifUrls = gifCommands.commands[commandName];
-    if (index < 0 || index >= gifUrls.length) {
+    const [indexString, target] = index.split("-");
+    const indexNumber = Number(indexString);
+    if (target !== "self" && target !== "multiple" && target !== "both") {
+      interaction.reply({
+        content: "Invalid target.",
+        ephemeral: true,
+      });
+      return;
+    }
+    const gifUrls: string[] = gifCommands.commands[commandName][target];
+    if (indexNumber < 0 || indexNumber >= gifUrls.length) {
       interaction.reply({
         content: "Index out of bounds.",
         ephemeral: true,
@@ -47,7 +67,7 @@ export const removeGif = {
       return;
     }
 
-    const gifUrl = gifUrls[index];
+    const gifUrl = gifUrls[indexNumber];
     await interaction.reply({
       content: `Are you sure you want to remove the gif "${gifUrl}" from command "${commandName}"? (y/n)`,
       ephemeral: true,
@@ -64,7 +84,7 @@ export const removeGif = {
       return;
     }
 
-    gifUrls.splice(index, 1);
+    gifUrls.splice(indexNumber, 1);
     saveGifCommands(gifCommands);
     interaction.editReply({
       content: `Removed gif "${gifUrl}" from command "${commandName}".`,

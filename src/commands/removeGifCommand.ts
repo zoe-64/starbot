@@ -4,21 +4,31 @@ import {
   TextChannel,
 } from "discord.js";
 import { loadGifCommands, saveGifCommands } from "../gifCommands";
+import { loadDynamicCommands } from "../main";
 
 export const removeGifCommand = {
   command: new SlashCommandBuilder()
     .setName("removegifcommand")
     .setDescription("Remove a gif command by name.")
-    .addStringOption((option) =>
-      option
-        .setName("name")
-        .setDescription("The name of the command to remove.")
+    .addStringOption((option) => {
+      const gifCommands = loadGifCommands();
+      const commandChoices = Object.keys(gifCommands.commands).map(
+        (commandName) => ({
+          name: commandName,
+          value: commandName,
+        })
+      );
+
+      return option
+        .setName("commandname")
+        .setDescription("The command to remove.")
         .setRequired(true)
-    ),
+        .addChoices(...commandChoices);
+    }),
 
   async execute(interaction: CommandInteraction) {
     const commandName = (interaction as CommandInteraction).options.get(
-      "name",
+      "commandname",
       true
     ).value as string;
     const gifCommands = loadGifCommands();
@@ -50,5 +60,6 @@ export const removeGifCommand = {
     interaction.editReply({
       content: `Removed gif command "${commandName}".`,
     });
+    loadDynamicCommands();
   },
 };

@@ -22,6 +22,7 @@ import { speak } from "./commands/speak";
 import { removeGifCommand } from "./commands/removeGifCommand";
 import { removeGif } from "./commands/removeGif";
 import { sendAllGifs } from "./commands/sendAllGifs";
+import { addGifTemplate } from "./commands/addGifTemplate";
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ const commands = [
   removeGif,
   removeGifCommand,
   sendAllGifs,
+  addGifTemplate,
 ];
 
 const rest = new REST({ version: "10" }).setToken(token);
@@ -65,16 +67,22 @@ client.once("ready", async () => {
   loadDynamicCommands();
 });
 
-async function loadDynamicCommands() {
+export async function loadDynamicCommands() {
   const gifCommands = loadGifCommands();
   const dynamicCommands = Object.keys(gifCommands.commands).map((commandName) =>
     new SlashCommandBuilder()
       .setName(commandName)
       .setDescription(`Sends a GIF from ${commandName}.`)
-      .addNumberOption((option) =>
+      .addMentionableOption((option) =>
         option
-          .setName("index")
-          .setDescription("The index number (optional).")
+          .setName("target")
+          .setDescription("Sets the target")
+          .setRequired(false)
+      )
+      .addStringOption((option) =>
+        option
+          .setName("id")
+          .setDescription("The id of the gif format: <index>-<target>.")
           .setRequired(false)
       )
   );
