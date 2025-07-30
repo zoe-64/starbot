@@ -109,34 +109,52 @@ async function onCommandInput(interaction: ChatInputCommandInteraction) {
 }
 
 async function onButtonClick(interaction: ButtonInteraction) {
-  interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ ephemeral: true });
   const button = interaction.customId;
   const [type, asset_id] = button.split("_");
-  if (type === "like") {
+  if (type === "like" || type === "dislike") {
     const db = await connectToDatabase(process.env.MONGODB_URI!);
     const collection = await getAssetCollection(db);
     const state = await collection.findOne({ id: asset_id });
     if (!state) {
       console.warn("No matching asset found to update");
       interaction.editReply({
-        content: `Failed to like asset ${asset_id}!`,
+        content: `Failed to ${type} asset ${asset_id}!`,
       });
       return;
     }
-    if (state.likes.includes(interaction.user.id)) {
-      await collection.updateOne({ id: asset_id }, { $pull: { likes: interaction.user.id } });
-    } else if (state.dislikes.includes(interaction.user.id)) {
-      await collection.updateOne(
-        { id: asset_id },
-        {
-          $pull: { dislikes: interaction.user.id },
-          $addToSet: { likes: interaction.user.id },
-        }
-      );
+    if (type === "like") {
+      if (state.likes.includes(interaction.user.id)) {
+        await collection.updateOne({ id: asset_id }, { $pull: { likes: interaction.user.id } });
+      } else if (state.dislikes.includes(interaction.user.id)) {
+        await collection.updateOne(
+          { id: asset_id },
+          {
+            $pull: { dislikes: interaction.user.id },
+            $addToSet: { likes: interaction.user.id },
+          }
+        );
+      } else {
+        await collection.updateOne({ id: asset_id }, { $addToSet: { likes: interaction.user.id } });
+      }
     } else {
-      await collection.updateOne({ id: asset_id }, { $addToSet: { likes: interaction.user.id } });
+      if (state.dislikes.includes(interaction.user.id)) {
+        await collection.updateOne({ id: asset_id }, { $pull: { dislikes: interaction.user.id } });
+      } else if (state.likes.includes(interaction.user.id)) {
+        await collection.updateOne(
+          { id: asset_id },
+          {
+            $pull: { likes: interaction.user.id },
+            $addToSet: { dislikes: interaction.user.id },
+          }
+        );
+      } else {
+        await collection.updateOne(
+          { id: asset_id },
+          { $addToSet: { dislikes: interaction.user.id } }
+        );
+      }
     }
-
     const asset = await collection.findOne({ id: asset_id });
     if (!asset) return;
     const reply = await fetchMessageById(client, interaction.channelId, interaction.message.id);
@@ -144,50 +162,8 @@ async function onButtonClick(interaction: ButtonInteraction) {
     reply.edit({
       components: [assetActionBar(asset)],
     });
-    await interaction.deleteReply();
-    return;
   }
 
-  if (type === "dislike") {
-    const db = await connectToDatabase(process.env.MONGODB_URI!);
-    const collection = await getAssetCollection(db);
-    const state = await collection.findOne({ id: asset_id });
-    if (!state) {
-      console.warn("No matching asset found to update");
-      interaction.editReply({
-        content: `Failed to dislike asset ${asset_id}!`,
-      });
-      return;
-    }
-
-    if (state.dislikes.includes(interaction.user.id)) {
-      await collection.updateOne({ id: asset_id }, { $pull: { dislikes: interaction.user.id } });
-    } else if (state.likes.includes(interaction.user.id)) {
-      await collection.updateOne(
-        { id: asset_id },
-        {
-          $pull: { likes: interaction.user.id },
-          $addToSet: { dislikes: interaction.user.id },
-        }
-      );
-    } else {
-      await collection.updateOne(
-        { id: asset_id },
-        { $addToSet: { dislikes: interaction.user.id } }
-      );
-    }
-
-    const asset = await collection.findOne({ id: asset_id });
-    if (!asset) return;
-    const reply = await fetchMessageById(client, interaction.channelId, interaction.message.id);
-
-    if (!reply) return;
-    reply.edit({
-      components: [assetActionBar(asset)],
-    });
-    await interaction.deleteReply();
-    return;
-  }
   await interaction.deleteReply();
 }
 function assetActionBar(asset: Asset) {
