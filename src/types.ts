@@ -38,6 +38,7 @@ export interface BotCommand {
 
 export interface BotCommandSentence {
   _id?: ObjectId;
+  id: string;
   command: ObjectId;
   sentence: string;
   targeted: boolean;

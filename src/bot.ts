@@ -12,6 +12,7 @@ import {
   ButtonStyle,
   Client,
   Collection,
+  EmbedBuilder,
   GatewayIntentBits,
   MessageFlags,
   REST,
@@ -24,7 +25,13 @@ import * as dotenv from "dotenv";
 
 import { readdirSync } from "fs";
 import { fileURLToPath } from "url";
-import { fetchMessageById, sentenceMatcher } from "./utility.js";
+import {
+  fetchMessageById,
+  formatUser,
+  getUserFromId,
+  sentenceMatcher,
+  usersToString,
+} from "./utility.js";
 import type { Asset, ExtendedClient } from "./types";
 import {
   connectToDatabase,
@@ -39,7 +46,7 @@ const clientId = process.env.CLIENT_ID as string;
 if (!token || !clientId) {
   throw new Error("Missing required environment variables.");
 }
-const client: ExtendedClient = new Client({
+export const client: ExtendedClient = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -109,13 +116,14 @@ async function onCommandInput(interaction: ChatInputCommandInteraction) {
 }
 
 async function onButtonClick(interaction: ButtonInteraction) {
-  await interaction.deferReply({ ephemeral: true });
   const button = interaction.customId;
   const [type, asset_id] = button.split("_");
+  await interaction.deferReply({ ephemeral: type !== "info" });
   if (type === "like" || type === "dislike") {
     const db = await connectToDatabase(process.env.MONGODB_URI!);
     const collection = await getAssetCollection(db);
     const state = await collection.findOne({ id: asset_id });
+
     if (!state) {
       console.warn("No matching asset found to update");
       interaction.editReply({
@@ -159,14 +167,109 @@ async function onButtonClick(interaction: ButtonInteraction) {
     if (!asset) return;
     const reply = await fetchMessageById(client, interaction.channelId, interaction.message.id);
     if (!reply) return;
+    const infoButton = reply.components
+      .flatMap((row) => row.components)
+      .find((btn) => btn.customId?.startsWith("info_"));
+    if (!infoButton || !infoButton.customId) {
+      return;
+    }
+    // info_${asset.id}_${sentence_id}_${command.name}
+    const [sentence_id, command_name] = infoButton.customId.split("_").slice(2);
+
     reply.edit({
-      components: [assetActionBar(asset)],
+      components: [assetActionBar(asset, sentence_id, command_name)],
     });
   }
 
+  if (type === "info") {
+    const [_, asset_id, sentence_id, command_name] = button.split("_");
+    const db = await connectToDatabase(process.env.MONGODB_URI!);
+    const sentenceCollection = await getCommandSentenceCollection(db);
+    const commandCollection = await getCommandCollection(db);
+    const assetCollection = await getAssetCollection(db);
+    const sentence = await sentenceCollection.findOne({ id: sentence_id });
+    if (!sentence) {
+      interaction.editReply({
+        content: "No matching sentence found.",
+      });
+      return;
+    }
+    const command = await commandCollection.findOne({ name: command_name });
+    if (!command) {
+      interaction.editReply({
+        content: "No matching command found.",
+      });
+      return;
+    }
+    const asset = await assetCollection.findOne({ id: asset_id });
+    if (!asset) {
+      interaction.editReply({
+        content: "No matching asset found.",
+      });
+      return;
+    }
+    const like_users = usersToString(asset.likes.map((id) => getUserFromId(id) ?? id));
+    const dislike_users = usersToString(asset.dislikes.map((id) => getUserFromId(id) ?? id));
+
+    const assetAddedBy = getUserFromId(asset.addedBy);
+    const sentenceAddedBy = getUserFromId(sentence.addedBy);
+    const commandAddedBy = getUserFromId(command.addedBy);
+    const embed = new EmbedBuilder()
+      .setTitle(`/${command.name} -> [${asset.id}] ${asset.type}`)
+      .addFields([
+        {
+          name: "CommandInfo",
+          value: `/${command.name} added by ${
+            commandAddedBy ? formatUser(commandAddedBy) : `user unknown ${command.addedBy}`
+          } with tags ${command.tags.join(", ")}${
+            command.excludes.length > 0 ? ` and with excludes ${command.excludes.join(", ")}` : ""
+          }.`,
+        },
+        {
+          name: "Sentence",
+          value: sentence.sentence,
+        },
+        {
+          name: "SentenceInfo",
+          value: `[${sentence.id}](sentence id) added by ${
+            sentenceAddedBy ? formatUser(sentenceAddedBy) : `user unknown ${sentence.addedBy}`
+          }.`,
+        },
+        {
+          name: "Tags",
+          value: asset.tags.join(", "),
+        },
+        {
+          name: "URL",
+          value: asset.url,
+        },
+        {
+          name: "Likes",
+          value: like_users.length === 0 ? "None" : like_users.join(", "),
+        },
+        {
+          name: "Dislikes",
+          value: dislike_users.length === 0 ? "None" : dislike_users.join(", "),
+        },
+      ])
+      .setFooter({
+        text: `Asset added by ${
+          assetAddedBy
+            ? `${formatUser(assetAddedBy)} ${new Date(asset.addedAt).toDateString()}`
+            : `user unknown ${asset.addedBy}`
+        }`,
+        iconURL: assetAddedBy?.displayAvatarURL(),
+      })
+      .setImage(asset.url);
+
+    interaction.editReply({
+      embeds: [embed],
+    });
+    return;
+  }
   await interaction.deleteReply();
 }
-function assetActionBar(asset: Asset) {
+function assetActionBar(asset: Asset, sentence_id: string, command_name: string) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`dislike_${asset.id}`)
@@ -180,7 +283,11 @@ function assetActionBar(asset: Asset) {
     new ButtonBuilder()
       .setCustomId(`like_${asset.id}`)
       .setLabel("👍 +1")
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`info_${asset.id}_${sentence_id}_${command_name}`)
+      .setLabel("📝 Info")
+      .setStyle(ButtonStyle.Secondary)
   );
 }
 
@@ -269,7 +376,7 @@ export async function loadDynamicCommands() {
           await interaction.editReply({
             content: message,
             files: [file],
-            components: [assetActionBar(asset)],
+            components: [assetActionBar(asset, sentence.id, command.name)],
           });
         } catch (error) {
           console.error(error);

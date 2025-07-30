@@ -1,13 +1,17 @@
-import { writeFile } from "fs/promises";
+import { unlink, writeFile } from "fs/promises";
 import { request } from "undici";
-import type { Client, SlashCommandSubcommandBuilder } from "discord.js";
+import type { Client, SlashCommandSubcommandBuilder, User } from "discord.js";
+import { SlashCommandSubcommandGroupBuilder, SlashCommandBuilder } from "discord.js";
+import { client } from "./bot.js";
 
 export async function downloadImage(url: string, path: string) {
   const { body } = await request(url);
   const arrayBuffer = await body.arrayBuffer();
   await writeFile(path, Buffer.from(arrayBuffer));
 }
-
+export async function deleteImage(path: string) {
+  await unlink(path);
+}
 export function stringToTags(str: string) {
   return str
     .toLowerCase()
@@ -39,8 +43,6 @@ export async function fetchMessageById(client: Client, channelId: string, messag
     return null;
   }
 }
-
-import { SlashCommandBuilder, SlashCommandSubcommandGroupBuilder } from "discord.js";
 
 type CommandBuilder =
   | SlashCommandBuilder
@@ -101,4 +103,20 @@ export function sentenceMatcher(sentence: string, sender: string, target: string
     sentence = sentence.replaceAll(key, valueString);
   }
   return sentence.replaceAll("  ", " ");
+}
+
+export function getUserFromId(id: string) {
+  return client.users.cache.get(id);
+}
+
+export function formatUser(user: User | string) {
+  if (typeof user === "string") return user;
+  return `${user.displayName} (${user.id})`;
+}
+export function usersToString(users: (User | undefined | string)[]) {
+  return users.map((user) => {
+    if (!user) return "unknown user";
+    if (typeof user === "string") return `user ${user}`;
+    return `${user.displayName} (${user.id})`;
+  });
 }

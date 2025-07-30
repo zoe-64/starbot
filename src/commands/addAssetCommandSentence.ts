@@ -36,12 +36,15 @@ export default {
       return;
     }
 
+    const id = Math.random().toString(36).substring(2, 15);
+
     const botSentence: BotCommandSentence = {
       command: commandDoc._id,
       sentence: sentence,
       targeted: targeted,
       addedAt: new Date(),
       addedBy: interaction.user.id,
+      id,
     };
     const collection = await getCommandSentenceCollection(
       await connectToDatabase(process.env.MONGODB_URI!)
@@ -52,11 +55,11 @@ export default {
       | TextChannel
       | undefined;
     if (channel) {
-      channel.send(`command sentence: ${sentence} added to command ${command}`);
+      channel.send(`command sentence: ${sentence} added to command ${command} with id ${id}`);
     }
 
     interaction.reply({
-      content: `command sentence: ${sentence} added to command ${command}!`,
+      content: `command sentence: ${sentence} added to command ${command} with id ${id}!`,
       flags: MessageFlags.Ephemeral,
     });
   },
