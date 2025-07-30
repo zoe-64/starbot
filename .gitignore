@@ -2,3 +2,8 @@
 .env
 dist/main.js
 .qodo/history.sqlite
+src/old
+images/gif/*
+images/png/*
+.vscode
+.qodo

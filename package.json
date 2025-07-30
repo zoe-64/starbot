@@ -2,17 +2,34 @@
   "name": "starbot",
   "version": "1.0.0",
   "description": "",
-  "main": "./src/main.ts",
+  "main": "./src/bot.ts",
   "scripts": {
-    "start": "esbuild ./src/main.ts --bundle --outfile=dist/main.js --platform=node && node dist/main.js"
+    "start": "node --loader ts-node/esm src/bot.ts",
+    "startOld": "esbuild ./src/bot.ts --bundle --outfile=dist/bot.js --platform=node && node dist/bot.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "module",
   "dependencies": {
+    "axios": "^1.11.0",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "esbuild": "^0.25.0",
-    "typescript": "^5.7.3"
+    "mongodb": "^6.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@eslint/json": "^0.13.1",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-jsonc": "^2.20.1",
+    "globals": "^16.3.0",
+    "jiti": "^2.5.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
   }
 }
